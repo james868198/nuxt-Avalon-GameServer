@@ -3,7 +3,8 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "start": "node ./bin/www"
+    "start": "node ./bin/www",
+    "dev": " nodemon ./bin/www --exec babel-node --presets babel-preset-env"
   },
   "dependencies": {
     "cookie-parser": "~1.4.4",
@@ -11,12 +12,17 @@
     "express": "~4.16.1",
     "mariadb": "^2.1.1",
     "morgan": "~1.9.1",
-    "socket.io": "^2.3.0"
+    "redis": "^3.0.2",
+    "socket.io": "^2.3.0",
+    "uuid": "^3.3.3"
   },
   "devDependencies": {
     "babel-cli": "^6.26.0",
     "babel-core": "^6.26.3",
     "babel-loader": "^8.0.6",
-    "babel-preset-env": "^1.7.0"
+    "babel-preset-env": "^1.7.0",
+    "babel-register": "^6.26.0",
+    "consola": "^2.10.1",
+    "nodemon": "^1.19.3"
   }
 }
