@@ -11,7 +11,7 @@ export default class game {
         // condiguration
         this.numOfPlayers = numOfPlayers
         this.configuration = avalonRule.configuration[this.numOfPlayers]
-        this.haveLadyOfTheLake = this.configuration.haveLadyOfTheLake
+        this.haveLadyOfLake = this.configuration.haveLadyOfLake
         // status
         this.status = 'pending' // start, assasination, over
         this.missionResult = null
@@ -34,7 +34,7 @@ export default class game {
                 id: i + 1,
                 requiredNum: this.configuration.requiredNum[i],
                 badTolerance: this.configuration.badTolerance[i],
-                ladyOfTheLake: null,
+                ladyOfLake: null,
                 history: null,
                 roundsHistory: []
             })
@@ -60,6 +60,7 @@ export default class game {
             winerCamp: this.winerCamp,
             status: this.status,
             players: this.players,
+            numOfPlayers: this.numOfPlayers,
             // board
             missions: this.missions,
             // round
@@ -74,7 +75,7 @@ export default class game {
         return this.playersInfo[id]
     }
     addPlayer(playerData) {
-        console.log('[game]addPlayer', playerData)
+        console.log('[game][addPlayer]', playerData)
         if (this.status !== 'pending') {
             return
         }
@@ -90,15 +91,24 @@ export default class game {
         this.nowPlayerAmount++
     }
     isPlayerInGame(userId) {
-        console.log('[game][getPlayerInfoById]')
+        console.log('[game][isPlayerInGame]')
         let status = false
         this.players.forEach(player => {
-            console.log('[game][getPlayerInfoById] ', player.userId, userId)
+            console.log('[game][isPlayerInGame] ', player.userId, userId)
             if (player.userId === userId) {
                 status = true
             }
         })
         return status
+    }
+    getPlayerDataByUserId(userId) {
+        let playerData = null
+        this.players.forEach(player => {
+            if (player.userId === userId) {
+                playerData = player
+            }
+        })
+        return playerData
     }
     updatePlayerData(userId,key,value) {
         let playerData = null
@@ -110,10 +120,10 @@ export default class game {
         })
         return playerData
     }
-    removePlayer(player) {
-        console.log('[game]removePlayer', player)
+    removePlayer(userId) {
+        console.log('[game]removePlayer', userId)
         if (this.status == "pending") {
-            this.players = this.players.filter(item => item.id !== player.id) // es6 array remove寫法
+            this.players = this.players.filter(player => player.userId !== userId) // es6 array remove寫法
             this.nowPlayerAmount--
         }
     }

@@ -24,7 +24,7 @@ export default (socket, db) => {
 
     socket.on('getGameById', id => gameController.getGameById(socket, db, id))
 
-    socket.on('getIdentity', () => gameController.getPlayerInfo(socket, db))
+    socket.on('getPlayerInfo', () => gameController.getPlayerInfo(socket, db))
 
     socket.on('quest', data => gameController.quest(socket, db, data))
 
