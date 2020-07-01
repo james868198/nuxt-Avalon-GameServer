@@ -55,14 +55,14 @@ const controller = {
                 return
             }
             // check game status
-            if (game.status === 'over') {
+            if (game.roomData.status === 'over') {
                 respData['status'] = 'fail'
                 respData['error']['code'] = 10001
                 respData['error']['description'] = 'game was already over.'
                 socket.emit('response', respData)
                 return
-            } else if (game.status === 'pending') {
-                if (game.full) {
+            } else if (game.roomData.status === 'pending') {
+                if (game.isFull) {
                     respData['status'] = 'fail'
                     respData['error']['code'] = 10001
                     respData['error']['description'] = 'game is full.'
@@ -101,13 +101,13 @@ const controller = {
             }           
             console.log("playerData:", playerData)
             socket.playerData = playerData
-            respData['data']['game'] = game.gameData
+            respData['data']['game'] = game.publicData
             socket.to(socket.room).emit('response', respData)
 
             respData['data']['player'] =  playerData
             socket.emit('response', respData)
             // check game full again
-            if (game.full && game.status === "pending") {
+            if (game.isFull && game.roomData.status === "pending") {
                 // console.log(this)
                 controller.startGame(socket, db)
             }
@@ -131,42 +131,42 @@ const controller = {
             const respData = resUtil.getDefaultRes()
             respData.data = {
                 time: time,
-                game: game.gameData
+                game: game.publicData
             }
             socket.emit('response', respData)
             socket.to(socket.room).emit('response', respData)
-            result = game.missionResult
-            const status = game.status
-            const roundStage = game.round.stage
+            const status = game.roomData.status
+            const roundStage = game.gameData.stage
             if (status == 'start') {
                 if (roundStage === 'questing') {
                     if (time >= QUESI_SEC) {
+                        game.completeQuesting()
                         time = 0
                     }
                 } else if (roundStage === 'voting') {
                     if (time >= VOTE_SEC) {
+                        game.completeVoting()
                         time = 0
                     }
                 } else if (roundStage === 'action') {
                     if (time >= ACTION_SEC) {
+                        game.completeAction()
+                        time = 0
+                    }
+                } else if (roundStage === 'assassinating') {
+                    if (time >= ASSAINATION_SEC) {
                         time = 0
                     }
                 } else {
-                    this.round.time = 0
-                    this.resetRound()
                     clearInterval(roundTimer)
                 }
-            } else if (status == 'assassination') {
-                if (time >= ASSAINATION_SEC) {
-                    time = 0
-                }
-            } else if (status == 'over') {
+            } else {
                 clearInterval(roundTimer)
             }
             time++
         }, 1000)
     },
-    leaveGame: (socket, db, userId) => {
+    leaveGame: (socket, db) => {
         console.log('[gameController][leaveGame]')
         // if (!socket.room) {
         //     return
@@ -182,11 +182,11 @@ const controller = {
                 socket.emit('response', respData)
                 return
             }
-            if (game.status == 'pending') {
+            if (game.roomData.status == 'pending') {
                 console.log('[gameController][leaveGame] leave pending game')
                 game.removePlayer(socket.userId)
                 respData.data = {
-                    game: game.gameData
+                    game: game.publicData
                 }
                 socket.to(socket.room).emit('response', respData)
             } else {
@@ -217,7 +217,7 @@ const controller = {
             const game = db.getGameById(id)
             respData.data = {
                 room: game.roomData,
-                game: game.gameData
+                game: game.publicData
             }
             socket.emit('response', respData)
             socket.to(socket.room).emit('response', respData)
@@ -257,21 +257,28 @@ const controller = {
     // in game
     quest: (socket, db, data) => {
         console.log('[gameController][quest]')
+        const respData = resUtil.getDefaultRes()
+
         try {
             const game = db.getGameById(socket.room)
-            if (game.round.leader !== socket.playerData.id) {
-                return
-            }
+          
             const questId = parseInt(data.playerId)
-            game.quest(socket.playerData.id, questId)
-            const respData = {
-                status: 'success',
-                data: {
-                    game: game.gameData
-                }
+            const res = game.quest(socket.playerData.id, questId)
+            if (res) {
+                respData.data = {
+                    game: game.publicData
+                } 
+                socket.emit('response', respData)
+                socket.to(socket.room).emit('response', respData)
+            } else {
+                respData['status'] = 'fail'
+                respData['error']['code'] = 10000
+                respData['error']['description'] = 'validation error'
+                socket.emit('response', respData)
             }
-            socket.emit('response', respData)
-            socket.to(socket.room).emit('response', respData)
+           
+            
+            
         } catch (error) {
             console.log('error:', error)
             respData['status'] = 'fail'
@@ -285,13 +292,17 @@ const controller = {
         try {
             const game = db.getGameById(socket.room)
             if (game.round.leader !== socket.playerData.id) {
+                respData['status'] = 'fail'
+                respData['error']['code'] = 10003
+                respData['error']['description'] = 'You are not leader'
+                socket.emit('response', respData)
                 return
             }
             game.unQuest(data.playerId)
             const respData = {
                 status: 'success',
                 data: {
-                    game: game.gameData
+                    game: game.publicData
                 }
             }
             socket.emit('response', respData)
@@ -312,7 +323,7 @@ const controller = {
             const respData = {
                 status: 'success',
                 data: {
-                    game: game.gameData
+                    game: game.publicData
                 }
             }
             socket.emit('response', respData)
@@ -333,7 +344,7 @@ const controller = {
             const respData = {
                 status: 'success',
                 data: {
-                    game: game.gameData
+                    game: game.publicData
                 }
             }
             if (!result) {
@@ -363,7 +374,7 @@ const controller = {
             const respData = {
                 status: 'success',
                 data: {
-                    game: game.gameData
+                    game: game.publicData
                 }
             }
             if (!result) {
