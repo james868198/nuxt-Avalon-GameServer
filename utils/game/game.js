@@ -7,8 +7,8 @@ export default class game {
         console.log('[game][constructor]', roomName, numOfPlayers)
 
         // condiguration
-        this.configuration = avalonRule.configuration[this.numOfPlayers]
-        this.haveLadyOfLake = this.configuration.haveLadyOfLake
+        this.configuration = avalonRule.configuration[numOfPlayers]
+        this.haveLadyOfLake = avalonRule.configuration[numOfPlayers].haveLadyOfLake
         // basic
         this.roomData = {
             name: roomName,
@@ -39,21 +39,24 @@ export default class game {
         // this.mostRecentModifiedTime = this.createdTime
         
     }
-    get roomData() {
+    get id() {
+        return this.roomData.id
+    }
+    get room() {
         return this.roomData
     }
-    get gameData() {
+    get data() {
         return this.gameData
     }
-    get voteHistory() {
+    get votingHistory() {
         return this.voteHistory
     }
-    get roundInfo() {
+    get round() {
         return this.roundInfo
     }
     get publicData() {
         return {
-            roomData: this.roomData,
+            room: this.roomData,
             gameData: this.gameData,
             missions: this.missions,
             voteHistory: this.voteHistory,
@@ -62,6 +65,7 @@ export default class game {
         }
     }
     getPlayerDataByUserId(userId) {
+        console.log('[game][getPlayerDataByUserId] userId:', userId)
         let playerData = null
         this.players.forEach(player => {
             if (player.userId === userId) {
@@ -71,8 +75,13 @@ export default class game {
         return playerData
     }
 
-    isFull() {
-        return this.numOfPlayers == this.roomData.nowPlayerAmount
+    get isFull() {
+        console.log('[game][isFull]',this.roomData.numOfPlayers, this.roomData.nowPlayerAmount)
+        if (this.roomData.numOfPlayers > this.roomData.nowPlayerAmount) {
+            return false
+        } else {
+            return true
+        }
     }
     getPlayerInfoById(id) {
         console.log('[game][getPlayerInfoById]', id)
@@ -130,11 +139,11 @@ export default class game {
             return -1
         }
         this.roomData.status = 'start'
-        this.gameData.status = 'questing'
+        this.gameData.stage = 'questing'
         this.initialPlayersInfo()
         this.resetPlayerActionStatus()
         this.updateMissions()
-        this.updateRoundInfo()
+        this.updateRoundInfo(0)
         
     }
     over() {
@@ -193,8 +202,9 @@ export default class game {
                 }
             }
         })
-        // reset all parameters
-      
+        for (let i =0;i<this.players.length;i++) {
+            this.players[i]['id'] = i
+        }
     }
     
     // reset vote and mission status for each players in the begining of each round
@@ -218,20 +228,22 @@ export default class game {
             result: null,
             failCounter: 0
         }
-        this.mission.push(mission)
+        this.missions.push(mission)
     }
-    updateRoundInfo() {
+    updateRoundInfo(id) {
         console.log('[game][updateRoundInfo]')
         const defaultVoteResults = []
         for(var i = 0; i < this.room.numOfPlayers; i++) {
             defaultVoteResults.push('T');
         }
         if(this.roundInfo) {
+            this.roundInfo.roundId = id % 5
             this.roundInfo.leader = (this.roundInfo.leader+1)/this.room.numOfPlayers
             this.roundInfo.onMission = []
-            this.roundInfo.voteResults =defaultVoteResults
+            this.roundInfo.voteResults = defaultVoteResults
         } else {
             this.roundInfo = {
+                roundId: 0,
                 leader: Math.round(Math.random() * (this.room.numOfPlayers - 1)),
                 onMission: [],
                 voteResults: defaultVoteResults
@@ -279,6 +291,9 @@ export default class game {
         if (this.roundInfo.onMission.length >= this.missions[mId].NumOnMission) {
             return -1
         }
+        if (this.roomData.numOfPlayers<=id || id<0) {
+            return -1
+        }
         this.players[id].onMission = true
         this.roundInfo.onMission.push(id)
         return true
@@ -293,6 +308,9 @@ export default class game {
             return -1
         }
         if (this.roundInfo.onMission.length == 0) {
+            return -1
+        }
+        if (this.roomData.numOfPlayers<=id || id<0) {
             return -1
         }
         this.roundInfo.onMission =  this.roundInfo.onMission.filter(onMissionId => onMissionId !== id)
@@ -349,24 +367,24 @@ export default class game {
 
         // update VoteHistory and RoundInfo
         this.updateVoteHistory()
-        this.updateRoundInfo
+       
 
         if(voteAgreeCounter > this.roomData.numOfPlayers/2) {
             this.gameData.stage = 'action'
+            this.updateRoundInfo(0)
         } else {
-            if(this.voteHistory[mid].length>=5) {
+            if(this.roundInfo.roundId >= 4) {
                 this.missions[mid].result = 'fail'
                 this.gameData.failCounter++
                 this.updateMissions()
-               
+                this.updateRoundInfo(this.roundInfo.roundId+1)
             }
             if(this.gameData.failCounter>=3) {
                 this.gamesData.winner = 'R'
                 this.over()
-
             } else {
                 this.gameData.stage = 'questing'
-
+                this.updateRoundInfo(0)
             }
         }
        
