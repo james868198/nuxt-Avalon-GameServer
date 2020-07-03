@@ -9,7 +9,7 @@ export default class game {
         // condiguration
         this.configuration = avalonRule.configuration[numOfPlayers]
         this.haveLadyOfLake = avalonRule.configuration[numOfPlayers].haveLadyOfLake
-        // basic
+        // public
         this.roomData = {
             name: roomName,
             id: uuidv1(),
@@ -26,13 +26,14 @@ export default class game {
         this.voteHistory = [[],[],[],[],[]]
         this.players = []
         this.roundInfo = null
-        this.actionResult = {
-            failCounter: 0,
-            actoinCounter: 0
-        }
-        this.playersInfo = [] 
         this.missions = []
-        
+        // private
+        this.playersInfo = [] 
+        this.voteResult = []
+        this.actionResult = {
+            failCounter: 0
+        }
+        // time
         this.timer = null // sent from gameController
         this.createdTime = Date.now()
         // this.startTime = null
@@ -57,7 +58,7 @@ export default class game {
     get publicData() {
         return {
             room: this.roomData,
-            gameData: this.gameData,
+            data: this.gameData,
             missions: this.missions,
             voteHistory: this.voteHistory,
             roundInfo: this.roundInfo,
@@ -97,8 +98,7 @@ export default class game {
             name: playerData.name,
             id: playerData.id,
             status: playerData.status,
-            onMission: false,
-            voted: false
+            onMission: false
         }
         this.players.push(player)
         this.roomData.nowPlayerAmount++
@@ -142,14 +142,22 @@ export default class game {
         this.gameData.stage = 'questing'
         this.initialPlayersInfo()
         this.resetPlayerActionStatus()
+        this.resetVoteResult()
         this.updateMissions()
-        this.updateRoundInfo(0)
+        this.resetRoundInfo(0)
         
     }
     over() {
         console.log('[game][over]')
+        if (this.gameData.stage !== 'end') {
+            return -1
+        }
+        if (this.gameData.winner === null || this.gameData.winner === undefined) {
+            return -1
+        }
+        console.log('[game][over] Game over. Winner is', this.gameData.winner)
         this.roomData.status = 'over'
-        this.gameData.stage = 'end'
+        return 1
 
         // same game data to db
     }
@@ -211,7 +219,6 @@ export default class game {
     resetPlayerActionStatus() {
         this.players.forEach(player => {
             player.onMission = false
-            player.voted = false
         })
     }
 
@@ -224,30 +231,22 @@ export default class game {
         const mission = {
             NumOnMission: this.configuration.requiredNum[mid+1],
             badTolerance: this.configuration.badTolerance[mid+1],
-            ladyOfLake: null,
-            result: null,
-            failCounter: 0
+            ladyOfLake: null
         }
         this.missions.push(mission)
     }
-    updateRoundInfo(id) {
-        console.log('[game][updateRoundInfo]')
-        const defaultVoteResults = []
+    resetVoteResult() {
+        this.voteResult = []
         for(var i = 0; i < this.room.numOfPlayers; i++) {
-            defaultVoteResults.push('T');
+            this.voteResult.push('T');
         }
-        if(this.roundInfo) {
-            this.roundInfo.roundId = id % 5
-            this.roundInfo.leader = (this.roundInfo.leader+1)/this.room.numOfPlayers
-            this.roundInfo.onMission = []
-            this.roundInfo.voteResults = defaultVoteResults
-        } else {
-            this.roundInfo = {
-                roundId: 0,
-                leader: Math.round(Math.random() * (this.room.numOfPlayers - 1)),
-                onMission: [],
-                voteResults: defaultVoteResults
-            }
+    }
+    resetRoundInfo(id) {
+        console.log('[game][resetRoundInfo] id:', id)        
+        this.roundInfo = {
+            roundId: id % 5,
+            leader: Math.round(Math.random() * (this.room.numOfPlayers - 1)),
+            onMission: []
         }
     }
     updateVoteHistory() {
@@ -261,9 +260,10 @@ export default class game {
             return -1
         }
         const round = {
+            roundId: this.roundInfo.roundId,
             leader: this.roundInfo.leader,
             onMission: this.roundInfo.onMission.slice(),
-            voteResults: this.roundInfo.voteResults.slice()
+            voteResult: this.voteResult
         }
         this.voteHistory[missionId].push(round)
     }
@@ -271,7 +271,6 @@ export default class game {
         console.log('[game][resetActionResult]')
         this.actionResult = {
             failCounter: 0,
-            actoinCounter: 0
         }
     }
 
@@ -316,33 +315,99 @@ export default class game {
         this.roundInfo.onMission =  this.roundInfo.onMission.filter(onMissionId => onMissionId !== id)
         this.players[id].onMission = false
     }
-    completeQuesting() {
-        console.log('[game][completeQuesting]')
-        const mid = this.missions.length -1
-        if (mid<0) {
-            return -1
-        }
-        if (this.roundInfo.onMission.length !== this.missions[mid].NumOnMission) {
-            return -1
-        } 
-        this.gameData.stage = 'voting'
-        return 1
-    }
+    
     vote(id, vote) {
         console.log('[game][vote]')
         console.log('[game][vote]  id, vote = ', id, vote)
         if (this.gameData.stage !== 'voting') {
             return -1
         }
-        if (this.players[id].voted) {
-            return -1
-        }
         if (vote === 'N' || vote === 'n') {
-            this.round.voteHistory[id] = 'N'
+            this.voteResult[id] = 'N'
+        } else if (vote === 'T' || vote === 't') {
+            this.voteResult[id] = 'T'
         }
-        this.players[id].voted = true
         return true
     }
+   
+    action(id, decision) {
+        console.log('[game][action]', id, decision)
+
+        // validation
+        if (this.gameData.stage !== 'action') {
+            return -1
+        }
+        if (decision !== 's' && decision !== 'f') {
+            return -1
+        }
+
+        // count 
+        if (decision == 'f') {
+            this.actionResult.failCounter++
+        } 
+        this.players[id].onMission = false
+        return true
+    }
+
+    assassinate(userId, target) {
+        console.log(`[game][assassinate] user:${userId} decides to assassinate player ${target}`)
+        
+        // validation
+        if (this.roomData.status !== 'start') {
+            return -1
+        }
+        if (this.game.gameData.stage !== 'assassinating') {
+            return -1
+        }
+        let assassin = null
+        this.players.forEach(player => {
+            if (player.userId === userId) {
+                assassin = player
+            }
+        })
+        if (!assassin) {
+            return -1
+        }
+        if (this.playersInfo[assassin.id].charactor !== 'Assassin') {
+            return -1
+        }
+        
+        // assassinate Merlin
+        if (this.playersInfo[target].charactor === 'Merlin') {
+            console.log('[game][completeAssassinate] Assassinate success')
+            this.gameData.winner = 'R'
+        } else {
+            console.log('[game][completeAssassinate] Assassinate fail')
+            this.gameData.winner = 'B'
+        }
+        this.game.gameData.stage = 'end'
+        
+        return 1
+    }
+   
+    // timeout
+    completeQuesting() {
+        console.log('[game][completeQuesting]')
+        const mid = this.missions.length -1
+        if (mid<0) {
+            return -1
+        }
+        const NumOnMission = this.missions[mid].NumOnMission
+        if(NumOnMission === undefined || NumOnMission === null || NumOnMission === NaN) {
+            return -1
+        }
+        if (this.roundInfo.onMission.length !== NumOnMission) {
+            console.log('[game][completeQuesting] onMission not qualified, reset onMission')
+            this.roundInfo.onMission = []
+            const leaderId = this.roundInfo.leader
+            for(let i = 0;i<this.missions[mid].NumOnMission;i++) {
+                this.roundInfo.onMission.push((leaderId+i)%NumOnMission)
+            }
+        } 
+        this.gameData.stage = 'voting'
+        return 1
+    }
+
     completeVoting() {
         console.log('[game][completeVoting]')
         const mid = this.missions.length -1
@@ -356,63 +421,41 @@ export default class game {
 
         // count vote result
         let voteAgreeCounter = 0
-        for(var i = 0; i < length; i++) {
-            data.push(createSomeObject());
-        }
-        this.roundInfo.voteResults.forEach(result => {
+        this.voteResult.forEach(result => {
             if (result === 'T') {
                 voteAgreeCounter++
             }
         })
-
+       
         // update VoteHistory and RoundInfo
         this.updateVoteHistory()
-       
+        this.resetVoteResult()
 
         if(voteAgreeCounter > this.roomData.numOfPlayers/2) {
             this.gameData.stage = 'action'
-            this.updateRoundInfo(0)
+            this.resetRoundInfo(0)
         } else {
             if(this.roundInfo.roundId >= 4) {
                 this.missions[mid].result = 'fail'
                 this.gameData.failCounter++
                 this.updateMissions()
-                this.updateRoundInfo(this.roundInfo.roundId+1)
+                this.resetRoundInfo(this.roundInfo.roundId+1)
             }
             if(this.gameData.failCounter>=3) {
                 this.gamesData.winner = 'R'
-                this.over()
+                this.gameData.stage = 'end'
             } else {
                 this.gameData.stage = 'questing'
-                this.updateRoundInfo(0)
+                this.resetRoundInfo(0)
             }
         }
        
 
         return 1
     }
-    action(id, decision) {
-        console.log('[game][action]', id, decision)
 
-        // validation
-        if (this.gameData.stage !== 'action') {
-            return -1
-        }
-        if (decision !== 's' && decision !== 'f') {
-            return -1
-        }
-
-        // count 
-        this.actionResult.actoinCounter++
-        if (decision == 'f') {
-            this.actionResult.failCounter++
-        } 
-        this.players[id].onMission = false
-        return true
-    }
-
-    CompleteAction() {
-        console.log('[game][action]', id, decision)
+    completeAction() {
+        console.log('[game][CompleteAction]')
         // validation
         if (this.gameData.stage !== 'action') {
             return -1
@@ -421,15 +464,16 @@ export default class game {
         if (mid<0) {
             return -1
         }
-        if(this.actionResult.actoinCounter != this.missions[mid].requiredNum) {
-            return -1
-        }
 
         // get mission result
-        if ( this.actionResult.failCounter >= this.missions[mid].badTolerance) {
+        const fcounter = this.actionResult.failCounter
+        const criteria = this.missions[mid].badTolerance
+        if ( fcounter > criteria) {
+            console.log(`[game][CompleteAction] fails, f:${fcounter}`)
             this.missions[mid].result = 'fail'
             this.gameData.failCounter++
         } else {
+            console.log(`[game][CompleteAction] success, f:${fcounter}`)
             this.missions[mid].result = 'success'
             this.gameData.successCounter++
         }
@@ -438,8 +482,8 @@ export default class game {
         this.resetActionResult()
 
         if(this.gameData.failCounter>=3) {
-            this.gamesData.winner = 'R'
-            this.over()
+            this.gameData.winner = 'R'
+            this.gameData.stage = 'end'
         } else if (this.gameData.successCounter>=3) {
             this.gameData.stage = 'assassinating'
         } else {
@@ -447,53 +491,30 @@ export default class game {
         }
         
     }
-    
-    assassinate(userId, target) {
-        console.log('[game][assassinate]', userId, target)
-        
+
+    completeAssassinate() {
+        console.log('[game][completeAssassinate]')
         // validation
         if (this.roomData.status !== 'start') {
             return -1
         }
-        if (this.gameStatus.status !== 'assassinating') {
+        if (this.gameData.stage !== 'assassinating') {
             return -1
         }
 
-        let assassin = null
-        this.players.forEach(player => {
-            if (player.userId === userId) {
-                assassin = player
-            }
-        })
-       
-        if (!assassin) {
-            return -1
-        }
+        // random pick Merlin
+        const target = Math.round(Math.random() * (this.room.numOfPlayers - 1))
+        console.log('[game][completeAssassinate] random pick target: ',target)
 
-        if (this.playersInfo[assassin.id].charactor !== 'Assassin') {
-            return -1
-        }
-        
-        // assassinate Merlin
         if (this.playersInfo[target].charactor === 'Merlin') {
-            this.gamesData.winner = 'R'
+            console.log('[game][completeAssassinate] Assassinate success')
+            this.gameData.winner = 'R'
         } else {
-            this.gamesData.winner = 'B'
+            console.log('[game][completeAssassinate] Assassinate fail')
+            this.gameData.winner = 'B'
         }
-        this.over()
+        this.gameData.stage = 'end'
         
         return 1
     }
-    // timeout
-    // froceQuest() {
-    //     this.round.NumOnMission = this.configuration.requiredNum[
-    //         this.round.id
-    //     ]
-    // }
-    // froceVote() {
-
-    // }
-    // froceAction() {
-
-    // }
 }

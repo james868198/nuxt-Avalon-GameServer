@@ -24,10 +24,11 @@ import resUtil from '../utils/resUtil'
 // const ACTION_SEC = avalonRule.decisionInterval
 // const ASSAINATION_SEC = avalonRule.assassinationInterval
 
-const QUESI_SEC = 10
-const VOTE_SEC = 10
-const ACTION_SEC = 10
-const ASSAINATION_SEC = 10
+const TEST_SEC = 5
+const QUESI_SEC = TEST_SEC
+const VOTE_SEC = TEST_SEC
+const ACTION_SEC = TEST_SEC
+const ASSAINATION_SEC = TEST_SEC
 
 const controller = {
     createGame: (socket, db, data) => {
@@ -163,24 +164,37 @@ const controller = {
             if (status == 'start') {
                 if (stage === 'questing') {
                     if (time >= QUESI_SEC) {
+                        console.log('[gameController][roundTimer] timeout, complete questing')
                         game.completeQuesting()
+                        console.log('[gameController][roundTimer] stage:', game.data.stage)
                         time = 0
                     }
                 } else if (stage === 'voting') {
                     if (time >= VOTE_SEC) {
+                        console.log('[gameController][roundTimer] timeout, complete voting')
                         game.completeVoting()
+                        console.log('[gameController][roundTimer] stage:', game.data.stage)
                         time = 0
                     }
                 } else if (stage === 'action') {
                     if (time >= ACTION_SEC) {
+                        console.log('[gameController][roundTimer] timeout, complete action')
                         game.completeAction()
+                        console.log('[gameController][roundTimer] stage:', game.data.stage)
                         time = 0
                     }
                 } else if (stage === 'assassinating') {
                     if (time >= ASSAINATION_SEC) {
+                        console.log('[gameController][roundTimer] timeout, complete assassinating')
+                        game.completeAssassinate()
+                        console.log('[gameController][roundTimer] stage:', game.data.stage)
                         time = 0
                     }
+                }  else if (stage === 'end') {
+                    console.log('[gameController][roundTimer] stage: end, game over')
+                    game.over()
                 } else {
+                    console.log('[gameController][roundTimer] timeout, stage.error: ', stage)
                     clearInterval(roundTimer)
                 }
             } else {
