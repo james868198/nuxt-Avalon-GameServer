@@ -225,9 +225,11 @@ export default class game {
     updateMissions() {
         console.log('[game][updateMissions]')
         const mid = this.missions.length-1
-        if(mid >=4) {
-            return
+        if(mid >=4 || this.gameData.stage === "end" || this.gameData.stage === "assassinating" ) {
+            console.log('[game][updateMissions] stop pushing new mission')
+            return -1
         }
+       
         const mission = {
             NumOnMission: this.configuration.requiredNum[mid+1],
             badTolerance: this.configuration.badTolerance[mid+1],
@@ -384,27 +386,33 @@ export default class game {
         
         return 1
     }
-   
+    resetOnMission(leaderId, NumOnMission) {
+        console.log('[game][resetOnMission]')
+        this.roundInfo.onMission = []
+        for(let i = 0;i<NumOnMission;i++) {
+            this.roundInfo.onMission.push((leaderId+i)%NumOnMission)
+        }
+    }
     // timeout
     completeQuesting() {
         console.log('[game][completeQuesting]')
         const mid = this.missions.length -1
+        const leaderId = this.roundInfo.leader
         if (mid<0) {
             return -1
         }
         const NumOnMission = this.missions[mid].NumOnMission
+        console.log('[game][completeQuesting] NumOnMission:', NumOnMission)
         if(NumOnMission === undefined || NumOnMission === null || NumOnMission === NaN) {
-            return -1
+            console.log('[game][completeQuesting] onMission not qualified, reset onMission')
+            this.resetOnMission(leaderId, NumOnMission)
         }
         if (this.roundInfo.onMission.length !== NumOnMission) {
-            console.log('[game][completeQuesting] onMission not qualified, reset onMission')
-            this.roundInfo.onMission = []
-            const leaderId = this.roundInfo.leader
-            for(let i = 0;i<this.missions[mid].NumOnMission;i++) {
-                this.roundInfo.onMission.push((leaderId+i)%NumOnMission)
-            }
+            console.log('[game][completeQuesting] onMission size wrong, reset onMission')
+            this.resetOnMission(leaderId, NumOnMission)
         } 
         this.gameData.stage = 'voting'
+        console.log('[game][completeQuesting] stage:', this.gameData.stage)
         return 1
     }
 
@@ -478,8 +486,7 @@ export default class game {
             this.gameData.successCounter++
         }
         this.missions[mid]['failCounter'] = this.actionResult.failCounter
-        this.updateMissions()
-        this.resetActionResult()
+       
 
         if(this.gameData.failCounter>=3) {
             this.gameData.winner = 'R'
@@ -489,7 +496,8 @@ export default class game {
         } else {
             this.gameData.stage = 'questing'
         }
-        
+        this.updateMissions()
+        this.resetActionResult()
     }
 
     completeAssassinate() {

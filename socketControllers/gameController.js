@@ -24,7 +24,7 @@ import resUtil from '../utils/resUtil'
 // const ACTION_SEC = avalonRule.decisionInterval
 // const ASSAINATION_SEC = avalonRule.assassinationInterval
 
-const TEST_SEC = 5
+const TEST_SEC = 10
 const QUESI_SEC = TEST_SEC
 const VOTE_SEC = TEST_SEC
 const ACTION_SEC = TEST_SEC
@@ -287,7 +287,6 @@ const controller = {
                 return
             }
             // update playerData to get player id
-            console.log("[gameController][getPlayerInfo] getPlayerDataByUserId " )
             const playerData = game.getPlayerDataByUserId(socket.userId)
             socket.playerData = playerData
             console.log("[gameController][getPlayerInfo] getPlayerDataByUserId", socket.playerData)
@@ -304,7 +303,6 @@ const controller = {
                 playerInfo: Info,
                 player: playerData
             } 
-            console.log('[gameController][getPlayerInfo] res:', respData)
             socket.emit('response', respData)
         } catch (error) {
             console.log('error:', error)
