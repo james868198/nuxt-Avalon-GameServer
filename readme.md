@@ -47,27 +47,24 @@ game:
 ## game data structure v2
 
 game:
-    management: {
-        name
-        id
+    roomStatus: {
+        name: wefwef
+        id: wefwefwefwef
         status: "pending",
         numOfPlayers: 2,
-        players: []
     }
+    players: []
     missions:
         [
             {
                 badTolerance: 0
-                history: null
-                id: 1
                 ladyOfLake: null
                 requiredNum: 2
                 result: 'success'
+                failCounter: 0
             },
             {
                 badTolerance: 0
-                history: null
-                id: 1
                 ladyOfLake: null
                 requiredNum: 2
             }
@@ -77,22 +74,36 @@ game:
             {
                 leader:
                 onMission: []
-                result: []
+                voteResults: []
             },
             {
+                leader:
                 onMission: []
-                result: []
+                voteResults: []
             }
         ]
     ]
-    status: {
-      
+    gamesData: {
         missionId:
         stage:
-        winner: 
+        winner:
+        successCounter: 0,
+        failCounter: 0
     }
     roundInfo: {
         leader: (...)
         onMission: (...)
-        result: []
+        voteResults: []
     }
+    playersInfo {
+        charactor
+        camp
+        saw
+    }
+## development diary
+
+6/30/2020
+1. game.js redesign
+2. gameController timer redesign
+
+room name = gameId

@@ -6,7 +6,7 @@
  * 10001 game error
  * 10002 game not found
  * 10003 no authorization
- * 10004 game error
+ * 10004 system error
  * 11110 input not qualified
  * 11111 unexpected error
  */

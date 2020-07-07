@@ -50,7 +50,7 @@ const rule = {
             charactors: ['Merlin', 'Assassin'],
             requiredNum: [2, 2, 2, 2, 2],
             badTolerance: [0, 0, 0, 0, 0],
-            haveLadyOfTheLake: false
+            haveLadyOfLake: false
         },
         '6': {
             playersNumbers: 6,
@@ -64,7 +64,7 @@ const rule = {
             ],
             requiredNum: [2, 3, 4, 3, 4],
             badTolerance: [0, 0, 0, 0, 0],
-            haveLadyOfTheLake: false
+            haveLadyOfLake: false
         },
         // for formal
         '5': {
@@ -72,7 +72,7 @@ const rule = {
             charactors: ['Loyalty', 'Loyalty', 'Merlin', 'Traitor', 'Assassin'],
             requiredNum: [2, 3, 2, 3, 3],
             badTolerance: [0, 0, 0, 0, 0],
-            haveLadyOfTheLake: false
+            haveLadyOfLake: false
         },
         // '6': {
         //     playersNumbers: 6,
@@ -86,7 +86,7 @@ const rule = {
         //     ],
         //     requiredNum: [2, 3, 4, 3, 4],
         //     badTolerance: [0, 0, 0, 0, 0],
-        //     haveLadyOfTheLake: false
+        //     haveLadyOfLake: false
         // },
         '7': {
             playersNumbers: 7,
@@ -101,7 +101,7 @@ const rule = {
             ],
             requiredNum: [2, 3, 3, 4, 4],
             badTolerance: [0, 0, 0, 1, 0],
-            haveLadyOfTheLake: false
+            haveLadyOfLake: false
         },
         '8': {
             playersNumbers: 8,
@@ -117,7 +117,7 @@ const rule = {
             ],
             requiredNum: [3, 4, 4, 5, 5],
             badTolerance: [0, 0, 0, 1, 0],
-            haveLadyOfTheLake: true
+            haveLadyOfLake: true
         },
         '9': {
             playersNumbers: 9,
@@ -134,7 +134,7 @@ const rule = {
             ],
             requiredNum: [3, 4, 4, 5, 5],
             badTolerance: [0, 0, 0, 1, 0],
-            haveLadyOfTheLake: true
+            haveLadyOfLake: true
         },
         '10': {
             playersNumbers: 10,
@@ -152,7 +152,7 @@ const rule = {
             ],
             requiredNum: [3, 4, 4, 5, 5],
             badTolerance: [0, 0, 0, 1, 0],
-            haveLadyOfTheLake: true
+            haveLadyOfLake: true
         }
     }
 }

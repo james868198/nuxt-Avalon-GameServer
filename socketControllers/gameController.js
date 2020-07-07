@@ -223,18 +223,25 @@ const controller = {
             if (game.room.status == 'pending') {
                 console.log('[gameController][leaveGame] leave pending game')
                 game.removePlayer(socket.userId)
+            } else if (game.room.status == 'over'){
+                console.log('[gameController][leaveGame] leave over game')
+                game.removePlayer(socket.userId)
             } else {
                 console.log('[gameController][leaveGame] player afk')
                 game.updatePlayerData(socket.userId,'status','off')
             }
-            respData.data = {
-                game: game.publicData
+            
+            if (socket.playerData && socket.playerData.name) {
+                socket.to(socket.room).emit('message', {
+                    userName: 'System',
+                    message: `${socket.playerData.name} left the room.`
+                })
             }
-            socket.to(socket.room).emit('response', respData)
-            socket.to(socket.room).emit('message', {
-                userName: 'System',
-                message: `${socket.playerData.name} left the room.`
-            })
+            // respData.data = {
+            //     game: game.publicData
+            // }
+            // socket.to(socket.room).emit('response', respData)
+           
         } catch (error) {
             console.log('error:', error)
             respData['status'] = 'fail'

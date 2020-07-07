@@ -376,10 +376,10 @@ export default class game {
         
         // assassinate Merlin
         if (this.playersInfo[target].charactor === 'Merlin') {
-            console.log('[game][completeAssassinate] Assassinate success')
+            console.log('[game][assassinate] Assassinate success')
             this.gameData.winner = 'R'
         } else {
-            console.log('[game][completeAssassinate] Assassinate fail')
+            console.log('[game][assassinate] Assassinate fail')
             this.gameData.winner = 'B'
         }
         this.game.gameData.stage = 'end'
