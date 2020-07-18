@@ -54,7 +54,7 @@ const controller = {
             socket.emit('response', respData)
         }
     },
-    joinGame: async (socket, db, data) => {
+    joinGame: async (socket, db, redis, data) => {
         console.log('[gameController][joinGame]')
         console.log('[gameController][joinGame] input data:', data)
         const respData = resUtil.getDefaultRes()
@@ -65,8 +65,19 @@ const controller = {
         }
         socket.userId = data.userId
         socket.room = data.gameId
-       
+
         try {
+            if (!data.userId) {
+                console.log('fail: found no userId')
+                respData['status'] = 'fail'
+                respData['error']['code'] = 10003
+                respData['error']['description'] = 'found no userId'
+                socket.emit('response', respData)
+                return
+            }
+            const res = await redis.hget(data.userId, "userName");
+            console.log('[gameController][joinGame] redis userName',res)
+
             const game = db.getGameById(data.gameId)
             // check game existed
             if (!game) {
@@ -237,10 +248,10 @@ const controller = {
                     message: `${socket.playerData.name} left the room.`
                 })
             }
-            // respData.data = {
-            //     game: game.publicData
-            // }
-            // socket.to(socket.room).emit('response', respData)
+            respData.data = {
+                game: game.publicData
+            }
+            socket.to(socket.room).emit('response', respData)
            
         } catch (error) {
             console.log('error:', error)

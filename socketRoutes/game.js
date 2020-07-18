@@ -1,6 +1,6 @@
 import gameController from '../socketControllers/gameController'
 
-export default (socket, db) => {
+export default (socket, redis, db) => {
     socket.userName = ''
     socket.room = null
     socket.player = {
@@ -20,7 +20,7 @@ export default (socket, db) => {
         socket.to(socket.room).emit('message', data)
         socket.emit('message', data)
     })
-    socket.on('joinGame', data => gameController.joinGame(socket, db, data))
+    socket.on('joinGame', data => gameController.joinGame(socket, db, redis, data))
 
     socket.on('getGameById', id => gameController.getGameById(socket, db, id))
 

@@ -13,7 +13,8 @@ export default (socket, redis, db) => {
         message: `Welcome to join us.`
     })
    
-    socket.on('setName',(data) => userController.setName(socket,redis,data))
+    socket.on('createUser',(data) => userController.createUser(socket,redis,data))
+    socket.on('getUser',(data) => userController.getUser(socket,redis,data))
 
     socket.on('chat', data => {
         console.log('socket chat', data)
