@@ -16,19 +16,8 @@
  * assassinate
  */
 
-import avalonRule from '../Avalon'
 import resUtil from '../utils/resUtil'
 
-// const QUESI_SEC = avalonRule.turnInterval
-// const VOTE_SEC = avalonRule.decisionInterval
-// const ACTION_SEC = avalonRule.decisionInterval
-// const ASSAINATION_SEC = avalonRule.assassinationInterval
-
-const TEST_SEC = 10
-const QUESI_SEC = TEST_SEC
-const VOTE_SEC = TEST_SEC
-const ACTION_SEC = TEST_SEC
-const ASSAINATION_SEC = TEST_SEC
 
 const controller = {
     createGame: (socket, db, data) => {
@@ -155,51 +144,48 @@ const controller = {
     },
     startGame: (socket, db) => {
         console.log('[gameController][startGame]')
-        const game = db.getGameById(socket.room)
+        const room = socket.room
+        console.log('[gameController][startGame] start room:', room)
+        const game = db.getGameById(room)
         game.start()
+
         // set paramters
-        let result = null
-        let time = 0
        
         const roundTimer = setInterval(() => {
             const respData = resUtil.getDefaultRes()
             respData.data = {
-                time: time,
                 game: game.publicData
             }
             socket.emit('response', respData)
             socket.to(socket.room).emit('response', respData)
             const status = game.room.status
             const stage = game.data.stage
+            const time = game.time_counter
             // console.log("roundTimer: status,stage=", status, game.data)
             if (status == 'start') {
                 if (stage === 'questing') {
-                    if (time >= QUESI_SEC) {
+                    if (time < 0) {
                         console.log('[gameController][roundTimer] timeout, complete questing')
                         game.completeQuesting()
                         console.log('[gameController][roundTimer] stage:', game.data.stage)
-                        time = 0
                     }
                 } else if (stage === 'voting') {
-                    if (time >= VOTE_SEC) {
+                    if (time < 0) {
                         console.log('[gameController][roundTimer] timeout, complete voting')
                         game.completeVoting()
                         console.log('[gameController][roundTimer] stage:', game.data.stage)
-                        time = 0
                     }
                 } else if (stage === 'action') {
-                    if (time >= ACTION_SEC) {
+                    if (time < 0) {
                         console.log('[gameController][roundTimer] timeout, complete action')
                         game.completeAction()
                         console.log('[gameController][roundTimer] stage:', game.data.stage)
-                        time = 0
                     }
                 } else if (stage === 'assassinating') {
-                    if (time >= ASSAINATION_SEC) {
+                    if (time < 0) {
                         console.log('[gameController][roundTimer] timeout, complete assassinating')
                         game.completeAssassinate()
                         console.log('[gameController][roundTimer] stage:', game.data.stage)
-                        time = 0
                     }
                 }  else if (stage === 'end') {
                     console.log('[gameController][roundTimer] stage: end, game over')
@@ -211,7 +197,7 @@ const controller = {
             } else {
                 clearInterval(roundTimer)
             }
-            time++
+            game.countTime()
         }, 1000)
     },
     leaveGame: (socket, db) => {
@@ -464,6 +450,27 @@ const controller = {
             socket.emit('response', respData)
         }
     }
-}
+}   // for testing
+    moveStage: (socket, db) => {
+        console.log('[gameController][moveStage]')
+        try {
+            const game = db.getGameById(socket.room)
+            game.assignTime(0)
+            const respData = {
+                status: 'success',
+                data: {
+                    game: game.publicData
+                }
+            }
+            socket.emit('response', respData)
+            socket.to(socket.room).emit('response', respData)
+        } catch (error) {
+            console.log('error:', error)
+            respData['status'] = 'fail'
+            respData['error']['code'] = 11111
+            respData['error']['description'] = `unexpected error:${error}`
+            socket.emit('response', respData)
+        }
+    }
 
 export default controller

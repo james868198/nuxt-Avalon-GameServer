@@ -2,6 +2,17 @@ import uuidv1 from 'uuid/v1'
 import avalonRule from '../../Avalon'
 import mathUtil from '../mathUtil'
 
+// const QUESI_SEC = avalonRule.turnInterval
+// const VOTE_SEC = avalonRule.decisionInterval
+// const ACTION_SEC = avalonRule.decisionInterval
+// const ASSAINATION_SEC = avalonRule.assassinationInterval
+
+const TEST_SEC = 10
+const QUESI_SEC = TEST_SEC
+const VOTE_SEC = TEST_SEC
+const ACTION_SEC = TEST_SEC
+const ASSAINATION_SEC = TEST_SEC
+
 export default class game {
     constructor(roomName, numOfPlayers) {
         console.log('[game][constructor]', roomName, numOfPlayers)
@@ -34,7 +45,7 @@ export default class game {
             failCounter: 0
         }
         // time
-        this.timer = null // sent from gameController
+        this.time_counter = 0 // sent from gameController
         this.createdTime = Date.now()
         // this.startTime = null
         // this.mostRecentModifiedTime = this.createdTime
@@ -63,6 +74,7 @@ export default class game {
             voteHistory: this.voteHistory,
             roundInfo: this.roundInfo,
             players: this.players,
+            time: this.time_counter
         }
     }
     getPlayerDataByUserId(userId) {
@@ -83,6 +95,20 @@ export default class game {
         } else {
             return true
         }
+    }
+    countTime() {
+        // console.log('[game][countTime]')
+        if (this.time_counter >= -1) {
+            this.time_counter--
+        }
+        return
+    }
+    assignTime(time) {
+        // console.log('[game][assignTime]')
+        if (time >= 0) {
+            this.time_counter = time
+        }
+        return
     }
     getPlayerInfoById(id) {
         console.log('[game][getPlayerInfoById]', id)
@@ -145,7 +171,9 @@ export default class game {
         this.resetVoteResult()
         this.updateMissions()
         this.resetRoundInfo(0)
-        
+        // start counting time
+        this.time_counter = QUESI_SEC
+        console.log('[game][start] start counting time from:', this.time_counter )
     }
     over() {
         console.log('[game][over]')
@@ -412,6 +440,7 @@ export default class game {
             this.resetOnMission(leaderId, NumOnMission)
         } 
         this.gameData.stage = 'voting'
+        this.time_counter = VOTE_SEC
         console.log('[game][completeQuesting] stage:', this.gameData.stage)
         return 1
     }
@@ -441,6 +470,7 @@ export default class game {
 
         if(voteAgreeCounter > this.roomData.numOfPlayers/2) {
             this.gameData.stage = 'action'
+            this.time_counter = ACTION_SEC
             this.resetRoundInfo(0)
         } else {
             if(this.roundInfo.roundId >= 4) {
@@ -454,6 +484,7 @@ export default class game {
                 this.gameData.stage = 'end'
             } else {
                 this.gameData.stage = 'questing'
+                this.time_counter = QUESI_SEC
                 this.resetRoundInfo(0)
             }
         }
@@ -493,8 +524,10 @@ export default class game {
             this.gameData.stage = 'end'
         } else if (this.gameData.successCounter>=3) {
             this.gameData.stage = 'assassinating'
+            this.time_counter = ASSAINATION_SEC
         } else {
             this.gameData.stage = 'questing'
+            this.time_counter = QUESI_SEC
         }
         this.updateMissions()
         this.resetActionResult()
