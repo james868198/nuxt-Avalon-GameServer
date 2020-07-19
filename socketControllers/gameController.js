@@ -153,14 +153,13 @@ const controller = {
        
         const roundTimer = setInterval(() => {
             const respData = resUtil.getDefaultRes()
-            respData.data = {
-                game: game.publicData
-            }
-            socket.emit('response', respData)
-            socket.to(socket.room).emit('response', respData)
+           
             const status = game.room.status
             const stage = game.data.stage
             const time = game.time_counter
+            respData.data['time'] = time
+            socket.emit('response', respData)
+            socket.to(socket.room).emit('response', respData)
             // console.log("roundTimer: status,stage=", status, game.data)
             if (status == 'start') {
                 if (stage === 'questing') {
@@ -168,23 +167,35 @@ const controller = {
                         console.log('[gameController][roundTimer] timeout, complete questing')
                         game.completeQuesting()
                         console.log('[gameController][roundTimer] stage:', game.data.stage)
+                        respData.data['game'] = game.publicData
+                        socket.emit('response', respData)
+                        socket.to(socket.room).emit('response', respData)
                     }
                 } else if (stage === 'voting') {
                     if (time < 0) {
                         console.log('[gameController][roundTimer] timeout, complete voting')
                         game.completeVoting()
+                        respData.data['game'] = game.publicData
+                        socket.emit('response', respData)
+                        socket.to(socket.room).emit('response', respData)
                         console.log('[gameController][roundTimer] stage:', game.data.stage)
                     }
                 } else if (stage === 'action') {
                     if (time < 0) {
                         console.log('[gameController][roundTimer] timeout, complete action')
                         game.completeAction()
+                        respData.data['game'] = game.publicData
+                        socket.emit('response', respData)
+                        socket.to(socket.room).emit('response', respData)
                         console.log('[gameController][roundTimer] stage:', game.data.stage)
                     }
                 } else if (stage === 'assassinating') {
                     if (time < 0) {
                         console.log('[gameController][roundTimer] timeout, complete assassinating')
                         game.completeAssassinate()
+                        respData.data['game'] = game.publicData
+                        socket.emit('response', respData)
+                        socket.to(socket.room).emit('response', respData)
                         console.log('[gameController][roundTimer] stage:', game.data.stage)
                     }
                 }  else if (stage === 'end') {
