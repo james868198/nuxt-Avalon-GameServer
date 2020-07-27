@@ -7,11 +7,13 @@ import mathUtil from '../mathUtil'
 // const ACTION_SEC = avalonRule.decisionInterval
 // const ASSAINATION_SEC = avalonRule.assassinationInterval
 
-const TEST_SEC = 10
-const QUESI_SEC = TEST_SEC
-const VOTE_SEC = TEST_SEC
-const ACTION_SEC = TEST_SEC
-const ASSAINATION_SEC = TEST_SEC
+const TEST_SEC1 = 10
+const TEST_SEC2 = 200
+
+const QUESI_SEC = TEST_SEC2
+const VOTE_SEC = TEST_SEC2
+const ACTION_SEC = TEST_SEC2
+const ASSAINATION_SEC = TEST_SEC2
 
 export default class game {
     constructor(roomName, numOfPlayers) {
@@ -32,12 +34,15 @@ export default class game {
             stage: null, // questing, voting, action, assassinating
             winner: null,
             successCounter: 0,
-            failCounter: 0
+            failCounter: 0,
+            missionId: -1
         }
         this.voteHistory = [[],[],[],[],[]]
         this.players = []
         this.roundInfo = null
         this.missions = []
+        // initaial Mission
+        this.initialMissions()
         // private
         this.playersInfo = [] 
         this.voteResult = []
@@ -65,6 +70,15 @@ export default class game {
     }
     get round() {
         return this.roundInfo
+    }
+    get mission() {
+        const mId = this.gameData.missionId
+        if (mId>=0 && mId<5) {
+            return this.missions[mId]
+        } else {
+            return null
+        }
+       
     }
     get publicData() {
         return {
@@ -104,7 +118,7 @@ export default class game {
         return
     }
     assignTime(time) {
-        // console.log('[game][assignTime]')
+        console.log('[game][assignTime]')
         if (time >= 0) {
             this.time_counter = time
         }
@@ -165,14 +179,14 @@ export default class game {
             return -1
         }
         this.roomData.status = 'start'
-        this.gameData.stage = 'questing'
+        this.gameData.missionId = 0
         this.initialPlayersInfo()
         this.resetPlayerActionStatus()
         this.resetVoteResult()
-        this.updateMissions()
-        this.resetRoundInfo(0)
+        this.initializeRoundInfo()
+
+        this.moveToStage('quest')
         // start counting time
-        this.time_counter = QUESI_SEC
         console.log('[game][start] start counting time from:', this.time_counter )
     }
     over() {
@@ -227,14 +241,15 @@ export default class game {
             i++
         })
         // saw others' identity
-        this.playersInfo.forEach(playerInfo => {
+        this.playersInfo.forEach((playerInfo, id) => {
+            playerInfo['saw'] = id
             if (playerInfo.charactor == 'Merlin') {
-                playerInfo.saw = view.Merlin
+                playerInfo['saw'] = view.Merlin
             } else if (playerInfo.charactor == 'Percival') {
-                playerInfo.saw = view.Percival
+                playerInfo['saw'] = view.Percival
             } else if (playerInfo.charactor !== 'Loyalty') {
                 if (playerInfo.charactor !== 'Oberon') {
-                    playerInfo.saw = view.Traitor
+                    playerInfo['saw'] = view.Traitor
                 }
             }
         })
@@ -249,21 +264,26 @@ export default class game {
             player.onMission = false
         })
     }
-
-    updateMissions() {
-        console.log('[game][updateMissions]')
-        const mid = this.missions.length-1
-        if(mid >=4 || this.gameData.stage === "end" || this.gameData.stage === "assassinating" ) {
-            console.log('[game][updateMissions] stop pushing new mission')
+    initialMissions() {
+        console.log('[game][initialMissions]')
+        for(let i = 0 ; i<5 ; i++) {
+            const mission = {
+                NumOnMission: this.configuration.requiredNum[i],
+                badTolerance: this.configuration.badTolerance[i],
+                ladyOfLake: null,
+                result: "pending",
+                failCounter: 0
+            }
+            this.missions.push(mission)
+        }
+    }
+    moveToNextMission() {
+        console.log('[game][moveToNextMission]')
+        if(this.gameData.missionId >=4 || this.gameData.stage === "end" || this.gameData.stage === "assassinating" ) {
+            console.log('[game][moveToNextMission] stop pushing new mission')
             return -1
         }
-       
-        const mission = {
-            NumOnMission: this.configuration.requiredNum[mid+1],
-            badTolerance: this.configuration.badTolerance[mid+1],
-            ladyOfLake: null
-        }
-        this.missions.push(mission)
+        this.gameData.missionId++
     }
     resetVoteResult() {
         this.voteResult = []
@@ -271,18 +291,26 @@ export default class game {
             this.voteResult.push('T');
         }
     }
-    resetRoundInfo(id) {
-        console.log('[game][resetRoundInfo] id:', id)        
+    initializeRoundInfo() {
+        console.log('[game][initializeRoundInfo]')        
         this.roundInfo = {
-            roundId: id % 5,
+            roundId: 0,
             leader: Math.round(Math.random() * (this.room.numOfPlayers - 1)),
+            onMission: []
+        }
+    }
+    updateRoundInfo(roundId){
+        console.log('[game][updateRoundInfo] roundId:', roundId)        
+        this.roundInfo = {
+            roundId: roundId % 5,
+            leader: (this.roundInfo.leader+1) % (this.room.numOfPlayers),
             onMission: []
         }
     }
     updateVoteHistory() {
         console.log('[game][updateVoteHistory]')
         
-        const missionId = this.missions.length -1
+        const missionId = this.gameData.missionId
         if (!this.roundInfo) {
             return -1
         }
@@ -303,28 +331,62 @@ export default class game {
             failCounter: 0,
         }
     }
-
+    resetOnMissionsStatus() {
+        this.players.forEach(player => {
+            player.onMission = false
+        });
+    }
+    autoAssignOnMission(leaderId, NumOnMission) {
+        console.log('[game][autoAssignOnMission]')
+        this.roundInfo.onMission = []
+        for(let i = 0;i<NumOnMission;i++) {
+            const id = (leaderId+i)%NumOnMission
+            this.roundInfo.onMission.push(id)
+            this.players[id].onMission = true
+        }
+    }
     // --- player actions ---
-    quest(leaderId, id) {
-        console.log('[game][quest]', id)
-        const mId = this.missions.length -1
+    quest(leaderId, list) {
+        console.log('[game][quest]',leaderId, list)
+        const mId = this.gameData.missionId
+        if (leaderId == null || list == null) {
+            console.log('[game][quest] input error')
+            return -1
+        }
         if (mId<0) {
+            console.log('[game][quest] mId error', mId)
             return -1
         }
         if (this.gameData.stage !== 'questing') {
+            console.log('[game][quest] stage error', this.gameData.stage)
             return -1
         }
         if (leaderId !== this.roundInfo.leader) {
+            console.log('[game][quest] not leader', leaderId)
             return -1
         }
-        if (this.roundInfo.onMission.length >= this.missions[mId].NumOnMission) {
+        if (list.length !== this.missions[mId].NumOnMission) {
+            console.log('[game][quest] list length error', leaderId)
             return -1
         }
-        if (this.roomData.numOfPlayers<=id || id<0) {
-            return -1
+        
+        // validation
+        for(let i = 0 ; i < list.length ; i++) {
+            const id = list[i]
+            if(id <0 ||i>this.gameData.numOfPlayers-1) {
+                return -1
+            }
         }
-        this.players[id].onMission = true
-        this.roundInfo.onMission.push(id)
+
+        // set onMission list
+        this.roundInfo.onMission = list.slice()
+
+        // update onMission status
+        this.resetPlayerActionStatus() 
+        for(let i = 0 ; i < list.length ; i++) {
+            const id = list[i]
+            this.players[id].onMission = true
+        } 
         return true
     }
     unQuest(leaderId, id) {
@@ -352,10 +414,12 @@ export default class game {
         if (this.gameData.stage !== 'voting') {
             return -1
         }
-        if (vote === 'N' || vote === 'n') {
+        if (vote === 0) {
             this.voteResult[id] = 'N'
-        } else if (vote === 'T' || vote === 't') {
+        } else if (vote === 1) {
             this.voteResult[id] = 'T'
+        } else {
+            return -1
         }
         return true
     }
@@ -364,41 +428,42 @@ export default class game {
         console.log('[game][action]', id, decision)
 
         // validation
+        if (id == null || decision == null) {
+            return -1
+        }
         if (this.gameData.stage !== 'action') {
             return -1
         }
-        if (decision !== 's' && decision !== 'f') {
+        if (!this.players[id].onMission) {
             return -1
         }
-
-        // count 
-        if (decision == 'f') {
+        if (decision === 0) {
             this.actionResult.failCounter++
-        } 
+        } else if (decision === 1) {
+            // noting
+        } else {
+            return -1
+        }
+        // count 
         this.players[id].onMission = false
         return true
     }
 
-    assassinate(userId, target) {
-        console.log(`[game][assassinate] user:${userId} decides to assassinate player ${target}`)
+    assassinate(id, target) {
+        console.log(`[game][assassinate] assassin:${id}, murdered player ${target}`)
         
         // validation
         if (this.roomData.status !== 'start') {
             return -1
         }
-        if (this.game.gameData.stage !== 'assassinating') {
+        if (this.gameData.stage !== 'assassinating') {
             return -1
         }
-        let assassin = null
-        this.players.forEach(player => {
-            if (player.userId === userId) {
-                assassin = player
-            }
-        })
-        if (!assassin) {
+        if (target <0 || target >= this.roomData.numOfPlayers || id < 0 || id >= this.roomData.numOfPlayers) {
             return -1
         }
-        if (this.playersInfo[assassin.id].charactor !== 'Assassin') {
+
+        if (this.playersInfo[id].charactor !== 'Assassin') {
             return -1
         }
         
@@ -410,49 +475,72 @@ export default class game {
             console.log('[game][assassinate] Assassinate fail')
             this.gameData.winner = 'B'
         }
-        this.game.gameData.stage = 'end'
+        this.moveToStage('end')
         
         return 1
     }
-    resetOnMission(leaderId, NumOnMission) {
-        console.log('[game][resetOnMission]')
-        this.roundInfo.onMission = []
-        for(let i = 0;i<NumOnMission;i++) {
-            this.roundInfo.onMission.push((leaderId+i)%NumOnMission)
+    // move to desired stage
+    moveToStage(stage) {
+        console.log('[game][moveToStage] stage: ', stage)
+        if (stage == null) {
+            return
+        }
+        switch(stage) {
+            case 'quest':
+                this.gameData.stage = 'questing'
+                this.resetOnMissionsStatus()
+                this.time_counter = QUESI_SEC
+                break
+            case 'vote':
+                this.gameData.stage = 'voting'
+                this.time_counter = VOTE_SEC
+                break
+            case 'action':
+                this.gameData.stage = 'action'
+                this.time_counter = ACTION_SEC
+                break
+            case 'assassinate':
+                this.gameData.stage = 'assassinating'
+                this.time_counter = ASSAINATION_SEC
+                break
+            case 'end':
+                this.gameData.stage = 'end'
+                this.time_counter = 0
+                break
+            default:
+                this.gameData.stage = 'questing'
+                this.resetOnMissionsStatus()
+                this.time_counter = QUESI_SEC
+                break
         }
     }
-    // timeout
+    // Complete
     completeQuesting() {
         console.log('[game][completeQuesting]')
-        const mid = this.missions.length -1
+        const mId = this.gameData.missionId
         const leaderId = this.roundInfo.leader
-        if (mid<0) {
+        if (mId<0) {
             return -1
         }
-        const NumOnMission = this.missions[mid].NumOnMission
+        const NumOnMission = this.missions[mId].NumOnMission
         console.log('[game][completeQuesting] NumOnMission:', NumOnMission)
-        if(NumOnMission === undefined || NumOnMission === null || NumOnMission === NaN) {
-            console.log('[game][completeQuesting] onMission not qualified, reset onMission')
-            this.resetOnMission(leaderId, NumOnMission)
-        }
-        if (this.roundInfo.onMission.length !== NumOnMission) {
+        if (this.roundInfo.onMission == null || this.roundInfo.onMission.length !== NumOnMission) {
             console.log('[game][completeQuesting] onMission size wrong, reset onMission')
-            this.resetOnMission(leaderId, NumOnMission)
+            this.autoAssignOnMission(leaderId, NumOnMission)
         } 
-        this.gameData.stage = 'voting'
-        this.time_counter = VOTE_SEC
-        console.log('[game][completeQuesting] stage:', this.gameData.stage)
+        // move to vote stage
+        this.moveToStage('vote')
         return 1
     }
 
     completeVoting() {
         console.log('[game][completeVoting]')
-        const mid = this.missions.length -1
+        const mId = this.gameData.missionId
         // validation
-        if (mid<0) {
+        if (mId<0) {
             return -1
         }
-        if (this.roundInfo.onMission.length !== this.missions[mid].NumOnMission) {
+        if (this.roundInfo.onMission.length !== this.missions[mId].NumOnMission) {
             return -1
         } 
 
@@ -463,29 +551,29 @@ export default class game {
                 voteAgreeCounter++
             }
         })
-       
         // update VoteHistory and RoundInfo
         this.updateVoteHistory()
         this.resetVoteResult()
 
         if(voteAgreeCounter > this.roomData.numOfPlayers/2) {
-            this.gameData.stage = 'action'
-            this.time_counter = ACTION_SEC
-            this.resetRoundInfo(0)
+            this.moveToStage('action')
+            // this.updateRoundInfo(0)
         } else {
+            // vote no pass 5 times
             if(this.roundInfo.roundId >= 4) {
-                this.missions[mid].result = 'fail'
+                this.missions[mId].result = 'fail'
                 this.gameData.failCounter++
-                this.updateMissions()
-                this.resetRoundInfo(this.roundInfo.roundId+1)
-            }
-            if(this.gameData.failCounter>=3) {
-                this.gamesData.winner = 'R'
-                this.gameData.stage = 'end'
+                this.moveToNextMission()
+                this.updateRoundInfo(0)
             } else {
-                this.gameData.stage = 'questing'
-                this.time_counter = QUESI_SEC
-                this.resetRoundInfo(0)
+                this.updateRoundInfo(this.roundInfo.roundId+1)
+            }
+
+            if(this.gameData.failCounter>=3) {
+                this.gameData.winner = 'R'
+                this.moveToStage('end')
+            } else {
+                this.moveToStage('quest')
             }
         }
        
@@ -499,37 +587,36 @@ export default class game {
         if (this.gameData.stage !== 'action') {
             return -1
         }
-        const mid = this.missions.length -1
-        if (mid<0) {
+        const mId = this.gameData.missionId
+        if (mId<0) {
             return -1
         }
 
         // get mission result
         const fcounter = this.actionResult.failCounter
-        const criteria = this.missions[mid].badTolerance
+        const criteria = this.missions[mId].badTolerance
         if ( fcounter > criteria) {
             console.log(`[game][CompleteAction] fails, f:${fcounter}`)
-            this.missions[mid].result = 'fail'
+            this.missions[mId].result = 'fail'
             this.gameData.failCounter++
         } else {
             console.log(`[game][CompleteAction] success, f:${fcounter}`)
-            this.missions[mid].result = 'success'
+            this.missions[mId].result = 'success'
             this.gameData.successCounter++
         }
-        this.missions[mid]['failCounter'] = this.actionResult.failCounter
+        this.missions[mId]['failCounter'] = this.actionResult.failCounter
        
 
         if(this.gameData.failCounter>=3) {
             this.gameData.winner = 'R'
-            this.gameData.stage = 'end'
+            this.moveToStage('end')
         } else if (this.gameData.successCounter>=3) {
-            this.gameData.stage = 'assassinating'
-            this.time_counter = ASSAINATION_SEC
+            this.moveToStage('assassinate')
         } else {
-            this.gameData.stage = 'questing'
-            this.time_counter = QUESI_SEC
+            this.updateRoundInfo(0)
+            this.moveToStage('quest')
         }
-        this.updateMissions()
+        this.moveToNextMission()
         this.resetActionResult()
     }
 
@@ -545,7 +632,7 @@ export default class game {
 
         // random pick Merlin
         const target = Math.round(Math.random() * (this.room.numOfPlayers - 1))
-        console.log('[game][completeAssassinate] random pick target: ',target)
+        console.log('[game][completeAssassinate] random pick target: ', target)
 
         if (this.playersInfo[target].charactor === 'Merlin') {
             console.log('[game][completeAssassinate] Assassinate success')
@@ -554,8 +641,7 @@ export default class game {
             console.log('[game][completeAssassinate] Assassinate fail')
             this.gameData.winner = 'B'
         }
-        this.gameData.stage = 'end'
-        
+        this.moveToStage('end')
         return 1
     }
 }

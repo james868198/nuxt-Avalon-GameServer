@@ -149,11 +149,14 @@ const controller = {
         const game = db.getGameById(room)
         game.start()
 
-        // set paramters
+        // return initilization game data
+        const respData = resUtil.getDefaultRes()
+        respData.data['game'] = game.publicData
+        socket.emit('response', respData)
+        socket.to(socket.room).emit('response', respData)
        
         const roundTimer = setInterval(() => {
-            const respData = resUtil.getDefaultRes()
-           
+            
             const status = game.room.status
             const stage = game.data.stage
             const time = game.time_counter
@@ -161,8 +164,11 @@ const controller = {
             socket.emit('response', respData)
             socket.to(socket.room).emit('response', respData)
             // console.log("roundTimer: status,stage=", status, game.data)
-            if (status == 'start') {
-                if (stage === 'questing') {
+            if (status != 'start') {
+                clearInterval(roundTimer)
+            }
+            switch (stage) {
+                case 'questing':
                     if (time < 0) {
                         console.log('[gameController][roundTimer] timeout, complete questing')
                         game.completeQuesting()
@@ -171,7 +177,8 @@ const controller = {
                         socket.emit('response', respData)
                         socket.to(socket.room).emit('response', respData)
                     }
-                } else if (stage === 'voting') {
+                    break
+                case 'voting':
                     if (time < 0) {
                         console.log('[gameController][roundTimer] timeout, complete voting')
                         game.completeVoting()
@@ -180,7 +187,8 @@ const controller = {
                         socket.to(socket.room).emit('response', respData)
                         console.log('[gameController][roundTimer] stage:', game.data.stage)
                     }
-                } else if (stage === 'action') {
+                    break
+                case 'action':
                     if (time < 0) {
                         console.log('[gameController][roundTimer] timeout, complete action')
                         game.completeAction()
@@ -189,7 +197,8 @@ const controller = {
                         socket.to(socket.room).emit('response', respData)
                         console.log('[gameController][roundTimer] stage:', game.data.stage)
                     }
-                } else if (stage === 'assassinating') {
+                    break
+                case 'assassinating':
                     if (time < 0) {
                         console.log('[gameController][roundTimer] timeout, complete assassinating')
                         game.completeAssassinate()
@@ -198,15 +207,20 @@ const controller = {
                         socket.to(socket.room).emit('response', respData)
                         console.log('[gameController][roundTimer] stage:', game.data.stage)
                     }
-                }  else if (stage === 'end') {
+                    break
+                case 'end':
                     console.log('[gameController][roundTimer] stage: end, game over')
                     game.over()
-                } else {
+                    respData.data['game'] = game.publicData
+                    socket.emit('response', respData)
+                    socket.to(socket.room).emit('response', respData)
+                    console.log('[gameController][roundTimer] stage:', game.data.stage)
+                    clearInterval(roundTimer)
+                    break
+                default:
                     console.log('[gameController][roundTimer] timeout, stage.error: ', stage)
                     clearInterval(roundTimer)
-                }
-            } else {
-                clearInterval(roundTimer)
+                    break
             }
             game.countTime()
         }, 1000)
@@ -329,13 +343,30 @@ const controller = {
     },
     // in game
     quest: (socket, db, data) => {
-        console.log('[gameController][quest]')
+        console.log('[gameController][quest] data:', data)
         const respData = resUtil.getDefaultRes()
 
         try {
+            
+            if (data == null || data.memberList == null) {
+                console.log('fail: empty data')
+                respData['status'] = 'fail'
+                respData['error']['code'] = 10000
+                respData['error']['description'] = 'empty data'
+                socket.emit('response', respData)
+                return
+            }
+            const onmissions = data.memberList
             const game = db.getGameById(socket.room)
-            const questId = parseInt(data.playerId)
-            const res = game.quest(socket.playerData.id, questId)
+            if (!game) {
+                console.log('fail: found no game')
+                respData['status'] = 'fail'
+                respData['error']['code'] = 10002
+                respData['error']['description'] = 'found no game'
+                socket.emit('response', respData)
+                return
+            }
+            const res = game.quest(socket.playerData.id, onmissions)
             if (res>0) {
                 respData.data = {
                     game: game.publicData
@@ -343,7 +374,7 @@ const controller = {
                 socket.emit('response', respData)
                 socket.to(socket.room).emit('response', respData)
             } else {
-                console.log('[gameController][unQuest] fail: validation error')
+                console.log('[gameController][quest] fail: validation error')
                 respData['status'] = 'fail'
                 respData['error']['code'] = 10000
                 respData['error']['description'] = 'validation error'
@@ -460,13 +491,21 @@ const controller = {
             respData['error']['description'] = `unexpected error:${error}`
             socket.emit('response', respData)
         }
-    }
-}   // for testing
+    },
+    // for testing
     moveStage: (socket, db) => {
         console.log('[gameController][moveStage]')
         try {
             const game = db.getGameById(socket.room)
-            game.assignTime(0)
+            if(!game) {
+                console.log('fail: found no game')
+                respData['status'] = 'fail'
+                respData['error']['code'] = 10002
+                respData['error']['description'] = 'found no player id'
+                socket.emit('response', respData)
+                return
+            }
+            game.assignTime(10)
             const respData = {
                 status: 'success',
                 data: {
@@ -483,5 +522,6 @@ const controller = {
             socket.emit('response', respData)
         }
     }
+}   
 
 export default controller

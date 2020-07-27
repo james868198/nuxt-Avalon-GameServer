@@ -27,7 +27,7 @@ export default (socket, redis, db) => {
     socket.on('getPlayerInfo', () => gameController.getPlayerInfo(socket, db))
 
     socket.on('quest', data => gameController.quest(socket, db, data))
-
+    
     socket.on('unQuest', data => gameController.unQuest(socket, db, data))
 
     socket.on('vote', data => gameController.vote(socket, db, data))
@@ -37,6 +37,8 @@ export default (socket, redis, db) => {
     socket.on('assassinate', data =>
         gameController.assassinate(socket, db, data)
     )
+
+    socket.on('moveStage', () => gameController.moveStage(socket, db))
 
     socket.on('disconnect', () => gameController.leaveGame(socket, db))
 
